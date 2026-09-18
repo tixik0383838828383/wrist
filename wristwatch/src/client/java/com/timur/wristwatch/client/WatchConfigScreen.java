@@ -7,14 +7,21 @@ import net.minecraft.text.Text;
 import net.minecraft.util.Arm;
 import net.minecraft.util.math.MathHelper;
 
-import java.util.function.Consumer;
-import java.util.function.Supplier;
+import java.util.function.DoubleSupplier;
 
 /**
  * Экран настроек мода: Настройки -> (в игре) клавиша WristWatch: Settings.
  * Все значения применяются сразу и сохраняются в config/wristwatch.json при закрытии.
+ *
+ * Геттеры/сеттеры сделаны на примитивах (DoubleSupplier / свой FloatSetter), чтобы
+ * не связываться с боксингом Double<->float в лямбдах вообще.
  */
 public class WatchConfigScreen extends Screen {
+
+	@FunctionalInterface
+	private interface FloatSetter {
+		void set(float value);
+	}
 
 	private final Screen parent;
 	private final WatchConfig cfg;
@@ -42,23 +49,23 @@ public class WatchConfigScreen extends Screen {
 		y += rowHeight;
 
 		y = addSlider(centerX, y, fieldWidth, "Смещение X", -2.0, 2.0,
-				() -> (double) cfg.offsetX, v -> cfg.offsetX = (float) v);
+				() -> cfg.offsetX, value -> cfg.offsetX = value);
 		y = addSlider(centerX, y, fieldWidth, "Смещение Y", -2.0, 2.0,
-				() -> (double) cfg.offsetY, v -> cfg.offsetY = (float) v);
+				() -> cfg.offsetY, value -> cfg.offsetY = value);
 		y = addSlider(centerX, y, fieldWidth, "Смещение Z", -2.0, 2.0,
-				() -> (double) cfg.offsetZ, v -> cfg.offsetZ = (float) v);
+				() -> cfg.offsetZ, value -> cfg.offsetZ = value);
 		y = addSlider(centerX, y, fieldWidth, "Масштаб", 0.05, 3.0,
-				() -> (double) cfg.scale, v -> cfg.scale = (float) v);
+				() -> cfg.scale, value -> cfg.scale = value);
 		y = addSlider(centerX, y, fieldWidth, "Угол руки: вверх/вниз", -180.0, 180.0,
-				() -> (double) cfg.posePitchDeg, v -> cfg.posePitchDeg = (float) v);
+				() -> cfg.posePitchDeg, value -> cfg.posePitchDeg = value);
 		y = addSlider(centerX, y, fieldWidth, "Угол руки: влево/вправо", -180.0, 180.0,
-				() -> (double) cfg.poseYawDeg, v -> cfg.poseYawDeg = (float) v);
+				() -> cfg.poseYawDeg, value -> cfg.poseYawDeg = value);
 		y = addSlider(centerX, y, fieldWidth, "Угол руки: поворот", -180.0, 180.0,
-				() -> (double) cfg.poseRollDeg, v -> cfg.poseRollDeg = (float) v);
+				() -> cfg.poseRollDeg, value -> cfg.poseRollDeg = value);
 		y = addSlider(centerX, y, fieldWidth, "Скорость анимации", 0.5, 20.0,
-				() -> (double) cfg.animationSpeed, v -> cfg.animationSpeed = (float) v);
+				() -> cfg.animationSpeed, value -> cfg.animationSpeed = value);
 		y = addSlider(centerX, y, fieldWidth, "Время удержания (сек)", 0.5, 20.0,
-				() -> (double) cfg.holdSeconds, v -> cfg.holdSeconds = (float) v);
+				() -> cfg.holdSeconds, value -> cfg.holdSeconds = value);
 
 		y += 6;
 		this.addDrawableChild(ButtonWidget.builder(Text.literal("Готово"), btn -> {
@@ -68,9 +75,9 @@ public class WatchConfigScreen extends Screen {
 	}
 
 	private int addSlider(int centerX, int y, int width, String label, double min, double max,
-						   Supplier<Double> getter, Consumer<Double> setter) {
-		double initial = MathHelper.clamp((getter.get() - min) / (max - min), 0.0, 1.0);
-		this.addDrawableChild(new LabeledSlider(centerX - width / 2, y, width, 20, label, min, max, initial, getter, setter));
+						   DoubleSupplier getter, FloatSetter setter) {
+		double initial = MathHelper.clamp((getter.getAsDouble() - min) / (max - min), 0.0, 1.0);
+		this.addDrawableChild(new LabeledSlider(centerX - width / 2, y, width, 20, label, min, max, initial, setter));
 		return y + 22;
 	}
 
@@ -92,10 +99,10 @@ public class WatchConfigScreen extends Screen {
 		private final String label;
 		private final double min;
 		private final double max;
-		private final Consumer<Double> setter;
+		private final FloatSetter setter;
 
 		LabeledSlider(int x, int y, int width, int height, String label, double min, double max,
-					  double normalizedInitial, Supplier<Double> getter, Consumer<Double> setter) {
+					  double normalizedInitial, FloatSetter setter) {
 			super(x, y, width, height, Text.literal(""), normalizedInitial);
 			this.label = label;
 			this.min = min;
@@ -116,7 +123,7 @@ public class WatchConfigScreen extends Screen {
 
 		@Override
 		protected void applyValue() {
-			setter.accept(currentValue());
+			setter.set((float) currentValue());
 		}
 	}
 }
